@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gitea-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea # chnage this password for production use
+      - POSTGRES_DB=gitea
+      - TZ=Asia/Tokyo
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitea -d gitea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - USER_UID=1000
+      - USER_GID=984
+      - TZ=Asia/Tokyo
+
+      # --- DB接続（PostgreSQL）---
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea # change this password for production use
+
+      # --- SSH（optional）---
+      - GITEA__server__SSH_PORT=2222
+      - GITEA__server__DOMAIN=localhost # change to your domain
+      - GITEA__server__ROOT_URL=http://localhost:3000/ # change to your domain
+    volumes:
+      - ./data:/data
+    ports:
+      - "3000:3000"
+      - "2222:22"
